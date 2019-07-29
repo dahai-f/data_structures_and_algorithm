@@ -46,14 +46,34 @@ impl BetterTransactionLog {
         match self.tail.take() {
             None => {
                 self.head = Some(node.clone());
-            },
+            }
             Some(old) => {
                 old.borrow_mut().next = Some(node.clone());
                 node.borrow_mut().prev = Some(old);
-            },
+            }
         };
         self.tail = Some(node);
         self.length += 1;
+    }
+
+    pub fn pop(&mut self) -> Option<String> {
+        self.head.take().map(|head| {
+            match head.borrow_mut().next.take() {
+                None => {
+                    self.tail = None;
+                }
+                Some(next) => {
+                    next.borrow_mut().prev = None;
+                    self.head = Some(next);
+                }
+            }
+            self.length -= 1;
+            Rc::try_unwrap(head)
+                .ok()
+                .expect("Something is terribly wrong")
+                .into_inner()
+                .value
+        })
     }
 }
 
@@ -106,11 +126,11 @@ impl DoubleEndedIterator for ListIterator {
                 let current = current.borrow();
                 result = Some((*current).value.clone());
                 current.prev.clone()
-            },
+            }
             None => {
                 result = None;
                 None
-            },
+            }
         };
         result
     }
