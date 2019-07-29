@@ -1,7 +1,8 @@
 use std::cell::RefCell;
-use std::rc::Rc;
 use std::io::IntoInnerError;
 use std::ops::Deref;
+use std::panic::resume_unwind;
+use std::rc::Rc;
 
 type Link = Option<Rc<RefCell<Node>>>;
 
@@ -46,7 +47,7 @@ impl IntoIterator for BetterTransactionLog {
     type IntoIter = ListIterator;
 
     fn into_iter(self) -> Self::IntoIter {
-        unimplemented!()
+        ListIterator::new(self.head)
     }
 }
 
@@ -82,3 +83,20 @@ impl Iterator for ListIterator {
     }
 }
 
+impl DoubleEndedIterator for ListIterator {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        let result: Option<Self::Item>;
+        self.current = match &self.current {
+            Some(current) => {
+                let current = current.borrow();
+                result = Some((*current).value.clone());
+                current.prev.clone()
+            },
+            None => {
+                result = None;
+                None
+            },
+        };
+        result
+    }
+}
