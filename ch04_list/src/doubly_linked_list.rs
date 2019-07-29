@@ -40,6 +40,21 @@ impl BetterTransactionLog {
     pub fn length(&self) -> usize {
         self.length
     }
+
+    pub fn append(&mut self, value: String) {
+        let node = Node::new(value);
+        match self.tail.take() {
+            None => {
+                self.head = Some(node.clone());
+            },
+            Some(old) => {
+                old.borrow_mut().next = Some(node.clone());
+                node.borrow_mut().prev = Some(old);
+            },
+        };
+        self.tail = Some(node);
+        self.length += 1;
+    }
 }
 
 impl IntoIterator for BetterTransactionLog {
