@@ -43,16 +43,15 @@ impl BetterTransactionLog {
 
     pub fn append(&mut self, value: String) {
         let node = Node::new(value);
-        match self.tail.take() {
+        match self.tail.replace(node.clone()) {
             None => {
-                self.head = Some(node.clone());
+                self.head = Some(node);
             }
             Some(old) => {
                 old.borrow_mut().next = Some(node.clone());
                 node.borrow_mut().prev = Some(old);
             }
         };
-        self.tail = Some(node);
         self.length += 1;
     }
 
@@ -74,6 +73,14 @@ impl BetterTransactionLog {
                 .into_inner()
                 .value
         })
+    }
+
+    pub fn iter(&self) -> ListIterator {
+        ListIterator::new(self.head.clone())
+    }
+
+    pub fn back_iter(&self) -> ListIterator {
+        ListIterator::new(self.tail.clone())
     }
 }
 
