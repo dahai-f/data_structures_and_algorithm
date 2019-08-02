@@ -22,6 +22,7 @@ impl Node {
     }
 }
 
+#[derive(Clone)]
 pub struct BetterTransactionLog {
     head: Link,
     tail: Link,
