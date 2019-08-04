@@ -25,7 +25,7 @@ fn bench_linked_list_find(b: &mut Bencher) {
 
     b.iter(|| {
         let i = rng.gen_range(0, LIST_ITEMS);
-        log.iter().find(|item| item == &items[i]).expect("NOT FOUND");
+        log.iter().find(|item| item == &&items[i]).expect("NOT FOUND");
     });
 }
 
@@ -81,32 +81,32 @@ fn better_transaction_log_iterator() {
     list.append("INSERT INTO mytable VALUES (1,2,3)".to_owned());
     list.append("INSERT INTO mytable VALUES (2,3,4)".to_owned());
     list.append("INSERT INTO mytable VALUES (3,4,5)".to_owned());
-    let mut iter = list.clone().into_iter();
+    let mut iter = list.iter();
     assert_eq!(
         iter.next(),
-        Some("INSERT INTO mytable VALUES (1,2,3)".to_owned())
+        Some(&"INSERT INTO mytable VALUES (1,2,3)".to_owned())
     );
     assert_eq!(
         iter.next(),
-        Some("INSERT INTO mytable VALUES (2,3,4)".to_owned())
+        Some(&"INSERT INTO mytable VALUES (2,3,4)".to_owned())
     );
     assert_eq!(
         iter.next(),
-        Some("INSERT INTO mytable VALUES (3,4,5)".to_owned())
+        Some(&"INSERT INTO mytable VALUES (3,4,5)".to_owned())
     );
 
     let mut iter = list.back_iter();
     assert_eq!(
         iter.next_back(),
-        Some("INSERT INTO mytable VALUES (3,4,5)".to_owned())
+        Some(&"INSERT INTO mytable VALUES (3,4,5)".to_owned())
     );
     assert_eq!(
         iter.next_back(),
-        Some("INSERT INTO mytable VALUES (2,3,4)".to_owned())
+        Some(&"INSERT INTO mytable VALUES (2,3,4)".to_owned())
     );
     assert_eq!(
         iter.next_back(),
-        Some("INSERT INTO mytable VALUES (1,2,3)".to_owned())
+        Some(&"INSERT INTO mytable VALUES (1,2,3)".to_owned())
     );
 }
 
@@ -118,14 +118,14 @@ fn better_transaction_log_clone_and_pop() {
     list.append("INSERT INTO mytable VALUES (2,3,4)".to_owned());
     list.append("INSERT INTO mytable VALUES (3,4,5)".to_owned());
 
-    let mut iter = list.clone().back_iter();
+    let mut iter = list.back_iter();
     assert_eq!(
         iter.next_back(),
-        Some("INSERT INTO mytable VALUES (3,4,5)".to_owned())
+        Some(&"INSERT INTO mytable VALUES (3,4,5)".to_owned())
     );
     assert_eq!(
         iter.next_back(),
-        Some("INSERT INTO mytable VALUES (2,3,4)".to_owned())
+        Some(&"INSERT INTO mytable VALUES (2,3,4)".to_owned())
     );
 
     assert_eq!(

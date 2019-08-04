@@ -1,7 +1,6 @@
+use std::borrow::Borrow;
 use std::cell::RefCell;
-use std::io::IntoInnerError;
 use std::ops::Deref;
-use std::panic::resume_unwind;
 use std::rc::Rc;
 
 type Link = Option<Rc<RefCell<Node>>>;
@@ -22,7 +21,6 @@ impl Node {
     }
 }
 
-#[derive(Clone)]
 pub struct BetterTransactionLog {
     head: Link,
     tail: Link,
@@ -69,74 +67,58 @@ impl BetterTransactionLog {
             }
             self.length -= 1;
             Rc::try_unwrap(head)
-                .map_or_else(|head| (*head.borrow()).value.clone(), |head| head.into_inner().value)
+                .map_or_else(
+                    |head| RefCell::borrow(&head).deref().value.clone(),
+                    |head| head.into_inner().value)
         })
     }
 
     pub fn iter(&self) -> ListIterator {
-        ListIterator::new(self.head.clone())
+        ListIterator::new(self.head.as_ref().map(|head| head.borrow()))
     }
 
     pub fn back_iter(&self) -> ListIterator {
-        ListIterator::new(self.tail.clone())
+        ListIterator::new(self.tail.as_ref().map(|tail| tail.borrow()))
     }
 }
 
-impl IntoIterator for BetterTransactionLog {
-    type Item = String;
-    type IntoIter = ListIterator;
+type IterLink<'a> = Option<&'a RefCell<Node>>;
 
-    fn into_iter(self) -> Self::IntoIter {
-        ListIterator::new(self.head)
-    }
+pub struct ListIterator<'a> {
+    current: IterLink<'a>
 }
 
-pub struct ListIterator {
-    current: Link
-}
-
-impl ListIterator {
-    fn new(start_at: Link) -> ListIterator {
+impl<'a> ListIterator<'a> {
+    fn new(start_at: IterLink<'a>) -> ListIterator<'a> {
         ListIterator {
             current: start_at
         }
     }
 }
 
-impl Iterator for ListIterator {
-    type Item = String;
+impl<'a> Iterator for ListIterator<'a> {
+    type Item = &'a String;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let result: Option<Self::Item>;
-        self.current = match &self.current {
-            Some(current) => {
-                let current = current.borrow();
-                result = Some((*current).value.clone());
-                current.next.clone()
+        match self.current.take() {
+            None => None,
+            Some(current) => unsafe {
+                self.current = match (*current.as_ptr()).next {
+                    None => None,
+                    Some(ref next) => Some(Rc::borrow(&next)),
+                };
+                Some(&(*current.as_ptr()).value)
             }
-            None => {
-                result = None;
-                None
-            }
-        };
-        result
+        }
     }
 }
 
-impl DoubleEndedIterator for ListIterator {
+impl<'a> DoubleEndedIterator for ListIterator<'a> {
     fn next_back(&mut self) -> Option<Self::Item> {
-        let result: Option<Self::Item>;
-        self.current = match &self.current {
-            Some(current) => {
-                let current = current.borrow();
-                result = Some((*current).value.clone());
-                current.prev.clone()
-            }
-            None => {
-                result = None;
-                None
-            }
-        };
-        result
+        self.current.take().map(|current| unsafe {
+            let current = &*current.as_ptr();
+            self.current = current.prev.as_ref().map(|prev| Rc::borrow(&prev));
+            &current.value
+        })
     }
 }
