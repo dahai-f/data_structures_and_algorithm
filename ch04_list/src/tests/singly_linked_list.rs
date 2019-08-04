@@ -1,5 +1,6 @@
-use crate::*;
 use singly_linked_list::TransactionLog;
+
+use crate::*;
 
 #[test]
 fn transaction_log_append() {
@@ -48,4 +49,28 @@ fn transaction_log_pop() {
         Some("INSERT INTO mytable VALUES (1,2,3)".to_owned())
     );
     assert_eq!(list.pop(), None);
+}
+
+#[test]
+fn transaction_log_clone_and_pop() {
+    let mut list = TransactionLog::new_empty();
+    assert_eq!(list.pop(), None);
+    list.append("INSERT INTO mytable VALUES (1,2,3)".to_owned());
+    list.append("INSERT INTO mytable VALUES (2,3,4)".to_owned());
+    list.append("INSERT INTO mytable VALUES (3,4,5)".to_owned());
+
+    let mut log_clone = list.clone();
+
+    assert_eq!(
+        list.pop(),
+        Some("INSERT INTO mytable VALUES (1,2,3)".to_owned())
+    );
+    assert_eq!(
+        list.pop(),
+        Some("INSERT INTO mytable VALUES (2,3,4)".to_owned())
+    );
+    assert_eq!(
+        list.pop(),
+        Some("INSERT INTO mytable VALUES (3,4,5)".to_owned())
+    );
 }

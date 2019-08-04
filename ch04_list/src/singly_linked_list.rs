@@ -17,6 +17,7 @@ impl Node {
     }
 }
 
+#[derive(Clone)]
 pub struct TransactionLog {
     head: Link,
     tail: Link,
@@ -62,10 +63,7 @@ impl TransactionLog {
 
             self.length -= 1;
             Rc::try_unwrap(head)
-                .ok()
-                .expect("Something is terribly wrong")
-                .into_inner()
-                .value
+                .map_or_else(|head| (*head.borrow()).value.clone(), |head| head.into_inner().value)
         })
     }
 }

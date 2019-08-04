@@ -111,8 +111,7 @@ fn better_transaction_log_iterator() {
 }
 
 #[test]
-#[should_panic(expected = "Something is terribly wrong")]
-fn better_transaction_log_clone_bug() {
+fn better_transaction_log_clone_and_pop() {
     let mut list = BetterTransactionLog::new_empty();
     assert_eq!(list.pop(), None);
     list.append("INSERT INTO mytable VALUES (1,2,3)".to_owned());
