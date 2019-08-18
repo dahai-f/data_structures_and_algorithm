@@ -3,6 +3,7 @@
 
 mod singly_linked_list;
 mod doubly_linked_list;
+mod skip_list;
 
 #[cfg(test)]
 mod tests;
