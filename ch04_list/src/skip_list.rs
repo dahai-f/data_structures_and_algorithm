@@ -66,4 +66,10 @@ impl BestTransactionLog {
 
         self.length += 1;
     }
+
+    pub fn find(&self, offset: u64) -> Option<String> {
+        self.head.as_ref().map(|head| {
+            let mut level = self.max_level;
+        })
+    }
 }
