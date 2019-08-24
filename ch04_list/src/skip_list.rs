@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 type Link = Option<Rc<RefCell<Node>>>;
 
-struct Node {
+pub struct Node {
     next: Vec<Link>,
     offset: u64,
     command: String,
@@ -68,8 +68,81 @@ impl BestTransactionLog {
     }
 
     pub fn find(&self, offset: u64) -> Option<String> {
-        self.head.as_ref().map(|head| {
-            let mut level = self.max_level;
-        })
+        match self.head.as_ref() {
+            Some(head) => {
+                let node = head.borrow();
+                if node.offset == offset {
+                    return Some(node.command.clone());
+                }
+
+
+                let mut max_level = self.max_level;
+                loop {
+                    if node.next[max_level].is_some() {
+                        break;
+                    }
+                    max_level -= 1;
+                    if max_level < 0 {
+                        return None;
+                    }
+                }
+
+                let mut node = head.clone();
+                for cur_level in (0..=max_level).rev() {
+                    loop {
+                        let next = node.borrow().next[cur_level].clone();
+                        match next {
+                            Some(next) => {
+                                if next.borrow().offset <= offset
+                                {
+                                    break;
+                                }
+                                node = next;
+                            }
+                            _ => break
+                        };
+                    }
+
+                    let node = node.borrow();
+                    if node.offset == offset {
+                        return Some(node.command.clone());
+                    }
+                }
+
+                None
+            }
+            None => None
+        }
+    }
+}
+
+pub struct ListIterator {
+    current: Link,
+    level: usize,
+}
+
+impl ListIterator {
+    pub fn new(start_at: Link, level: usize) -> ListIterator {
+        ListIterator {
+            current: start_at,
+            level,
+        }
+    }
+}
+
+impl Iterator for ListIterator {
+    type Item = String;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        unimplemented!()
+    }
+}
+
+impl IntoIterator for BestTransactionLog {
+    type Item = String;
+    type IntoIter = ListIterator;
+
+    fn into_iter(self) -> Self::IntoIter {
+        ListIterator::new(self.head, 0)
     }
 }
