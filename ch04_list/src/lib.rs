@@ -1,9 +1,9 @@
 #![feature(test)]
 #![feature(result_map_or_else)]
 
-mod singly_linked_list;
-mod doubly_linked_list;
-mod skip_list;
+pub mod singly_linked_list;
+pub mod doubly_linked_list;
+pub mod skip_list;
 
 #[cfg(test)]
 mod tests;
