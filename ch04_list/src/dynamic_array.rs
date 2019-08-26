@@ -1,6 +1,7 @@
-pub struct DynamicArray {
-    buf: Box<Option<u64>>,
+type Node = u64;
+
+pub struct TimestampSaver {
+    buf: Option<[Node]>,
     cap: usize,
     pub length: usize,
 }
-
