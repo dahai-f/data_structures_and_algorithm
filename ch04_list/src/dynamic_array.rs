@@ -12,7 +12,7 @@ pub struct TimestampSaver {
 impl TimestampSaver {
     pub fn new_empty() -> TimestampSaver {
         TimestampSaver {
-            buf: Box::new([None; MIN_SIZE]),
+            buf: vec![None; MIN_SIZE].into_boxed_slice(),
             length: 0,
         }
     }
