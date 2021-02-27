@@ -10,15 +10,15 @@
       <sourceFolder url="file://$MODULE_DIR$/ch04_linked_list/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/ch04_linked_list/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/ch04_linked_list/benches" isTestSource="true" />
-      <sourceFolder url="file://$MODULE_DIR$/ch04_list/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/ch04_list/examples" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/ch04_list/tests" isTestSource="true" />
-      <sourceFolder url="file://$MODULE_DIR$/ch04_list/benches" isTestSource="true" />
-      <sourceFolder url="file://$MODULE_DIR$/ch04_list\tests" isTestSource="true" />
-      <sourceFolder url="file://$MODULE_DIR$/ch04_list\benches" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/list/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/list/examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/list/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/list/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/list/benches" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/list/benches" isTestSource="true" />
       <excludeFolder url="file://$MODULE_DIR$/ch04_linked_list/target" />
-      <excludeFolder url="file://$MODULE_DIR$/ch04_list/target" />
-      <excludeFolder url="file://$MODULE_DIR$/ch04_list\target" />
+      <excludeFolder url="file://$MODULE_DIR$/list/target" />
+      <excludeFolder url="file://$MODULE_DIR$/list/target" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="inheritedJdk" />

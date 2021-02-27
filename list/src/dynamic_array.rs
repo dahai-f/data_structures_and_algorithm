@@ -23,9 +23,9 @@ impl TimestampSaver {
 
     fn grow(&mut self, min_cap: usize) {
         let old_cap = self.buf.len();
-        let new_cap = old_cap + old_cap >> 1;
+        let new_cap = old_cap + (old_cap >> 1);
         let new_cap = cmp::max(min_cap, new_cap);
-        let new_cap = cmp::min(new_cap, usize::max_value());
+        let new_cap = cmp::min(new_cap, usize::MAX);
         let mut new = vec![None; new_cap].into_boxed_slice();
         new[..self.length].clone_from_slice(&self.buf[..self.length]);
         self.buf = new;
