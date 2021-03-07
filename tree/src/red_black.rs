@@ -379,6 +379,7 @@ impl<K: Ord, V> RedBlackTree<K, V> {
                         brother_close.color = Black;
                         drop(brother);
                         drop(brother_close);
+                        drop(parent);
                         self.rotate(brother_rc, is_left);
                         continue;
                     }
@@ -401,13 +402,17 @@ impl<K: Ord, V> RedBlackTree<K, V> {
         if let Some(left) = &node.left {
             let left = Self::right_most(left.clone());
             Self::swap_key_and_value(&mut node, &mut left.borrow_mut());
+            drop(node);
             self.remove_node(left)
         } else if let Some(right) = &node.right {
             let right = Self::left_most(right.clone());
             Self::swap_key_and_value(&mut node, &mut right.borrow_mut());
+            drop(node);
             self.remove_node(right)
         } else {
+            drop(node);
             self.fix_on_remove(node_rc.clone());
+            let mut node = node_rc.borrow_mut();
             if let Some(parent) = &node.parent {
                 let parent = parent.upgrade().unwrap();
                 let mut parent = parent.deref().borrow_mut();
@@ -441,6 +446,8 @@ impl<K: Ord, V> RedBlackTree<K, V> {
                     if removed_node.as_ptr() == self.root.as_ref().unwrap().as_ptr() {
                         self.root = None
                     }
+                    drop(node_opt);
+                    self.length -= 1;
                     let removed_node = Rc::try_unwrap(removed_node).ok().unwrap();
                     return Some(removed_node.into_inner().value);
                 }
@@ -477,8 +484,36 @@ mod tests {
     use std::ops::Deref;
 
     use rand::prelude::SliceRandom;
+    use rand::Rng;
 
     use crate::red_black::*;
+
+    #[test]
+    fn remove() {
+        let mut tree = RedBlackTree::default();
+        const NUM: i32 = 100;
+        let mut elements: Vec<i32> = (0..NUM).collect();
+        let mut rng = rand::thread_rng();
+        elements.shuffle(&mut rng);
+        elements.iter().for_each(|element| {
+            let element = *element;
+            tree.add(element, element);
+        });
+
+        let mut len = tree.length();
+        while tree.length() > 0 {
+            let to_remove = rng.gen_range(0..100);
+            match tree.remove(&to_remove) {
+                None => {}
+                Some(removed) => {
+                    assert_eq!(removed, to_remove);
+                    len -= 1;
+                }
+            }
+            assert!(tree.is_valid());
+            assert_eq!(tree.length(), len);
+        }
+    }
 
     macro_rules! new_nodes {
         ($num:expr) => {{
@@ -504,12 +539,16 @@ mod tests {
         const NUM: i32 = 100;
         let mut elements: Vec<i32> = (0..NUM).collect();
         elements.shuffle(&mut rand::thread_rng());
+        let mut len = 0;
         elements.iter().for_each(|element| {
             let element = *element;
             assert_eq!(tree.add(element, element), None);
             assert!(tree.is_valid());
+            len += 1;
+            assert_eq!(len, tree.length());
         });
         assert_eq!(tree.add(99, 99), Some(99));
+        assert_eq!(tree.length(), 100);
         assert_eq!(
             tree.iter()
                 .map(|node| node.deref().borrow().key)
