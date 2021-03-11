@@ -115,6 +115,7 @@ impl<K: Ord, V> Default for BTree<K, V> {
 
 impl<K: Ord, V> BTree<K, V> {
     pub fn new(max_children_length: usize) -> Self {
+        assert!(max_children_length >= 4);
         Self {
             root: None,
             max_children_length,
@@ -258,5 +259,80 @@ impl<K: Ord, V> BTree<K, V> {
             }
             Some(last_child) => self.remove_right_most_r(last_child),
         }
+    }
+    fn fix_on_child_removed(
+        &mut self,
+        node: &mut Tree<K, V>,
+        child_index: usize,
+        child: &mut Tree<K, V>,
+    ) {
+        let min_pairs_len = self.max_children_length / 2 - 1;
+        if child.pairs.len() >= min_pairs_len {
+            return;
+        }
+
+        let left_child_index = match child_index.checked_sub(1) {
+            None => None,
+            Some(left_child_index) => {
+                let left_child = &mut node.children[left_child_index];
+                if left_child.pairs.len() > min_pairs_len {
+                    let mut temp = left_child.pairs.pop().unwrap();
+                    std::mem::swap(&mut temp, &mut node.pairs[child_index - 1]);
+                    child.pairs.insert(0, temp);
+                    if let Some(left_child_right) = left_child.children.pop() {
+                        child.children.insert(0, left_child_right);
+                    }
+                    return;
+                }
+                Some(left_child_index)
+            }
+        };
+        let right_child = match node.children.get_mut(child_index + 1) {
+            None => None,
+            Some(right_child) => {
+                if right_child.pairs.len() > min_pairs_len {
+                    let mut temp = right_child.pairs.remove(0);
+                    std::mem::swap(&mut temp, &mut node.pairs[child_index]);
+                    child.pairs.push(temp);
+                    if right_child.children.len() > 0 {
+                        let right_child_left = right_child.children.remove(0);
+                        child.children.push(right_child_left);
+                    }
+                    return;
+                }
+                Some(child_index + 1)
+            }
+        };
+        let (merge_left, to_merge_child_index) = match (left_child_index, right_child) {
+            (Some(left_child_index), Some(right_child_index)) => {
+                if node.children[left_child_index].pairs.len()
+                    < node.children[right_child_index].pairs.len()
+                {
+                    (true, left_child_index)
+                } else {
+                    (false, right_child_index)
+                }
+            }
+            (None, Some(right_child_index)) => (false, right_child_index),
+            (Some(left_child_index), None) => (true, left_child_index),
+            (None, None) => {
+                unreachable!()
+            }
+        };
+
+        let (merge_left, pair_in_node, mut merge_right) = if merge_left {
+            let pair_in_node = node.pairs.remove(to_merge_child_index);
+            let child = node.children.remove(child_index);
+            let left_child = &mut node.children[to_merge_child_index];
+            (left_child, pair_in_node, child)
+        } else {
+            let pair_in_node = node.pairs.remove(child_index);
+            let merge_right = node.children.remove(to_merge_child_index);
+            let merge_left = &mut node.children[child_index];
+            (merge_left, pair_in_node, merge_right)
+        };
+        merge_left.pairs.push(pair_in_node);
+        merge_left.pairs.append(&mut merge_right.pairs);
+        merge_left.children.append(&mut merge_right.children);
     }
 }
