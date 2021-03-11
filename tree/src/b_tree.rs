@@ -124,7 +124,7 @@ impl<K: Ord, V> BTree<K, V> {
 
     pub fn is_valid(&self) -> bool {
         match self.root.as_ref() {
-            None => false,
+            None => true,
             Some(root) => self.validate(root, 0).is_ok(),
         }
     }
@@ -204,6 +204,59 @@ impl<K: Ord, V> BTree<K, V> {
                     }
                 }
             }
+        }
+    }
+
+    pub fn remove(&mut self, key: &K) -> Option<V> {
+        let (root, removed_value) = match self.root.take() {
+            None => (None, None),
+            Some(mut root) => {
+                let removed_value = self.remove_r(&mut root, key);
+                if removed_value.is_some() {
+                    if root.pairs.is_empty() {
+                        (None, removed_value)
+                    } else {
+                        (Some(root), removed_value)
+                    }
+                } else {
+                    (Some(root), None)
+                }
+            }
+        };
+
+        self.root = root;
+        removed_value
+    }
+    fn remove_r(&mut self, node: &mut Tree<K, V>, key: &K) -> Option<V> {
+        match node.pairs.binary_search_by_key(&key, |(key, _value)| &key) {
+            Ok(found) => {
+                match node.children.get_mut(found) {
+                    None => {
+                        // 未获取到child，则说明node为叶子节点，则执行删除
+                        self.length -= 1;
+                        Some(node.pairs.remove(found).1)
+                    }
+                    Some(child) => {
+                        let mut pre = self.remove_right_most_r(child);
+                        std::mem::swap(&mut pre, &mut node.pairs[found]);
+                        Some(pre.1)
+                    }
+                }
+            }
+            Err(to_insert) => match node.children.get_mut(to_insert) {
+                None => None,
+                Some(child) => self.remove_r(child, key),
+            },
+        }
+    }
+    fn remove_right_most_r(&mut self, node: &mut Tree<K, V>) -> Pair<K, V> {
+        match node.children.last_mut() {
+            None => {
+                // 未获取到child，则说明node为叶子节点，则执行删除
+                self.length -= 1;
+                node.pairs.pop().unwrap()
+            }
+            Some(last_child) => self.remove_right_most_r(last_child),
         }
     }
 }
