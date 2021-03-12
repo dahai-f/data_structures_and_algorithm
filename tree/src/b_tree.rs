@@ -122,6 +122,12 @@ impl<K: Ord, V> BTree<K, V> {
             length: 0,
         }
     }
+    pub fn len(&self) -> usize {
+        self.length
+    }
+    pub fn is_empty(&self) -> bool {
+        self.length == 0
+    }
 
     pub fn is_valid(&self) -> bool {
         match self.root.as_ref() {
@@ -215,7 +221,8 @@ impl<K: Ord, V> BTree<K, V> {
                 let removed_value = self.remove_r(&mut root, key);
                 if removed_value.is_some() {
                     if root.pairs.is_empty() {
-                        (None, removed_value)
+                        assert!(root.children.len() <= 1);
+                        (root.children.pop(), removed_value)
                     } else {
                         (Some(root), removed_value)
                     }
@@ -240,13 +247,18 @@ impl<K: Ord, V> BTree<K, V> {
                     Some(child) => {
                         let mut pre = self.remove_right_most_r(child);
                         std::mem::swap(&mut pre, &mut node.pairs[found]);
+                        self.fix_on_child_removed(node, found);
                         Some(pre.1)
                     }
                 }
             }
             Err(to_insert) => match node.children.get_mut(to_insert) {
                 None => None,
-                Some(child) => self.remove_r(child, key),
+                Some(child) => {
+                    let removed = self.remove_r(child, key);
+                    self.fix_on_child_removed(node, to_insert);
+                    removed
+                }
             },
         }
     }
@@ -257,53 +269,54 @@ impl<K: Ord, V> BTree<K, V> {
                 self.length -= 1;
                 node.pairs.pop().unwrap()
             }
-            Some(last_child) => self.remove_right_most_r(last_child),
+            Some(last_child) => {
+                let removed = self.remove_right_most_r(last_child);
+                self.fix_on_child_removed(node, node.children.len() - 1);
+                removed
+            }
         }
     }
-    fn fix_on_child_removed(
-        &mut self,
-        node: &mut Tree<K, V>,
-        child_index: usize,
-        child: &mut Tree<K, V>,
-    ) {
+    fn fix_on_child_removed(&mut self, node: &mut Tree<K, V>, child_index: usize) {
         let min_pairs_len = self.max_children_length / 2 - 1;
-        if child.pairs.len() >= min_pairs_len {
+        if node.children[child_index].pairs.len() >= min_pairs_len {
             return;
         }
 
         let left_child_index = match child_index.checked_sub(1) {
             None => None,
             Some(left_child_index) => {
-                let left_child = &mut node.children[left_child_index];
-                if left_child.pairs.len() > min_pairs_len {
-                    let mut temp = left_child.pairs.pop().unwrap();
-                    std::mem::swap(&mut temp, &mut node.pairs[child_index - 1]);
-                    child.pairs.insert(0, temp);
-                    if let Some(left_child_right) = left_child.children.pop() {
-                        child.children.insert(0, left_child_right);
+                if node.children[left_child_index].pairs.len() > min_pairs_len {
+                    let mut temp = node.children[left_child_index].pairs.pop().unwrap();
+                    std::mem::swap(&mut temp, &mut node.pairs[left_child_index]);
+                    node.children[child_index].pairs.insert(0, temp);
+                    if let Some(left_child_right) = node.children[left_child_index].children.pop() {
+                        node.children[child_index]
+                            .children
+                            .insert(0, left_child_right);
                     }
                     return;
                 }
                 Some(left_child_index)
             }
         };
-        let right_child = match node.children.get_mut(child_index + 1) {
-            None => None,
-            Some(right_child) => {
-                if right_child.pairs.len() > min_pairs_len {
-                    let mut temp = right_child.pairs.remove(0);
+        let right_child_index = child_index + 1;
+        let right_child_index = match right_child_index >= node.children.len() {
+            true => None,
+            false => {
+                if node.children[right_child_index].pairs.len() > min_pairs_len {
+                    let mut temp = node.children[right_child_index].pairs.remove(0);
                     std::mem::swap(&mut temp, &mut node.pairs[child_index]);
-                    child.pairs.push(temp);
-                    if right_child.children.len() > 0 {
-                        let right_child_left = right_child.children.remove(0);
-                        child.children.push(right_child_left);
+                    node.children[child_index].pairs.push(temp);
+                    if !node.children[right_child_index].children.is_empty() {
+                        let right_child_left = node.children[right_child_index].children.remove(0);
+                        node.children[child_index].children.push(right_child_left);
                     }
                     return;
                 }
-                Some(child_index + 1)
+                Some(right_child_index)
             }
         };
-        let (merge_left, to_merge_child_index) = match (left_child_index, right_child) {
+        let (merge_left, to_merge_child_index) = match (left_child_index, right_child_index) {
             (Some(left_child_index), Some(right_child_index)) => {
                 if node.children[left_child_index].pairs.len()
                     < node.children[right_child_index].pairs.len()
@@ -334,5 +347,44 @@ impl<K: Ord, V> BTree<K, V> {
         merge_left.pairs.push(pair_in_node);
         merge_left.pairs.append(&mut merge_right.pairs);
         merge_left.children.append(&mut merge_right.children);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use rand::prelude::SliceRandom;
+
+    use crate::b_tree::BTree;
+
+    #[test]
+    fn add_and_remove() {
+        let test_nums = 1000usize;
+        let mut b_tree = BTree::default();
+        let mut nums: Vec<usize> = (0..test_nums).collect();
+        let mut rng = rand::thread_rng();
+        nums.shuffle(&mut rng);
+        let mut len = 0usize;
+        nums.iter().for_each(|&i| {
+            assert_eq!(b_tree.add(i, i), None);
+            assert!(b_tree.is_valid());
+            len += 1;
+            assert_eq!(b_tree.len(), len);
+        });
+
+        assert_eq!(b_tree.add(100, 100), Some(100));
+        assert_eq!(b_tree.len(), len);
+        assert_eq!(len, test_nums);
+
+        nums.shuffle(&mut rng);
+        nums.iter().for_each(|&i| {
+            assert_eq!(b_tree.remove(&i), Some(i));
+            assert!(b_tree.is_valid());
+            len -= 1;
+            assert_eq!(b_tree.len(), len);
+        });
+
+        assert_eq!(len, 0);
+        assert_eq!(b_tree.remove(&10), None);
+        assert_eq!(b_tree.len(), 0);
     }
 }
