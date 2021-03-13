@@ -348,6 +348,12 @@ impl<K: Ord, V> BTree<K, V> {
         merge_left.pairs.append(&mut merge_right.pairs);
         merge_left.children.append(&mut merge_right.children);
     }
+
+    pub fn iter(&self) -> Iter<K, V> {}
+}
+
+pub struct Iter<'t, K: Ord, V> {
+    stack: Vec<(&'t Tree<K, V>, usize)>,
 }
 
 #[cfg(test)]
@@ -387,4 +393,7 @@ mod tests {
         assert_eq!(b_tree.remove(&10), None);
         assert_eq!(b_tree.len(), 0);
     }
+
+    #[test]
+    fn iter() {}
 }
