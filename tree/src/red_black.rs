@@ -104,31 +104,30 @@ impl<K: Ord, V> RedBlackTree<K, V> {
                 }));
                 (new_node.clone(), Ok(new_node))
             }
-            Some(tree) => {
-                let weak = Rc::downgrade(&tree);
-                let mut tree_node = RefCell::borrow_mut(&tree);
-                let new_node;
-                match key.cmp(&tree_node.key) {
+            Some(node_rc) => {
+                let weak = Rc::downgrade(&node_rc);
+                let mut node = node_rc.borrow_mut();
+                let new_node = match key.cmp(&node.key) {
                     Ordering::Less => {
-                        let (left_root, new_node_) =
-                            Self::add_rec(tree_node.left.take(), Some(weak), key, value);
-                        tree_node.left = Some(left_root);
-                        new_node = new_node_;
+                        let (left_root, new_node) =
+                            Self::add_rec(node.left.take(), Some(weak), key, value);
+                        node.left = Some(left_root);
+                        new_node
                     }
                     Ordering::Equal => {
                         let mut old_vale = value;
-                        std::mem::swap(&mut tree_node.value, &mut old_vale);
-                        new_node = Err(old_vale);
+                        std::mem::swap(&mut node.value, &mut old_vale);
+                        Err(old_vale)
                     }
                     Ordering::Greater => {
-                        let (right_root, new_node_) =
-                            Self::add_rec(tree_node.right.take(), Some(weak), key, value);
-                        tree_node.right = Some(right_root);
-                        new_node = new_node_;
+                        let (right_root, new_node) =
+                            Self::add_rec(node.right.take(), Some(weak), key, value);
+                        node.right = Some(right_root);
+                        new_node
                     }
-                }
-                drop(tree_node);
-                (tree, new_node)
+                };
+                drop(node);
+                (node_rc, new_node)
             }
         }
     }
