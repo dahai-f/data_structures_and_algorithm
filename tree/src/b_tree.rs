@@ -1,4 +1,5 @@
 use std::cmp::Ordering;
+use std::option::Option::None;
 
 type Pair<K, V> = (K, V);
 type Tree<K, V> = Box<Node<K, V>>;
@@ -109,7 +110,7 @@ pub struct BTree<K: Ord, V> {
 
 impl<K: Ord, V> Default for BTree<K, V> {
     fn default() -> Self {
-        Self::new(128)
+        Self::new(256)
     }
 }
 
@@ -349,11 +350,71 @@ impl<K: Ord, V> BTree<K, V> {
         merge_left.children.append(&mut merge_right.children);
     }
 
-    pub fn iter(&self) -> Iter<K, V> {}
+    pub fn iter(&self) -> Iter<K, V> {
+        Iter {
+            b_tree: self,
+            remain_len: self.len(),
+            stack: vec![],
+        }
+    }
 }
 
 pub struct Iter<'t, K: Ord, V> {
+    b_tree: &'t BTree<K, V>,
+    remain_len: usize,
     stack: Vec<(&'t Tree<K, V>, usize)>,
+}
+
+impl<'t, K: Ord, V> Iter<'t, K, V> {
+    fn push_node(&mut self, node: &'t Tree<K, V>) {
+        self.stack.push((node, 0));
+        let mut left = node;
+        while let Some(left_left) = left.children.first() {
+            left = left_left;
+            self.stack.push((left, 0));
+        }
+    }
+    fn pop_node(&mut self) {
+        self.stack.pop();
+        while let Some((top_node, pair_index_in_top_node)) = self.stack.last() {
+            if *pair_index_in_top_node < top_node.pairs.len() {
+                return;
+            } else {
+                self.stack.pop();
+            }
+        }
+    }
+}
+
+impl<'t, K: Ord, V> Iterator for Iter<'t, K, V> {
+    type Item = &'t Pair<K, V>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.remain_len == 0 {
+            return None;
+        }
+
+        if self.stack.is_empty() {
+            let root = self.b_tree.root.as_ref().unwrap();
+            self.push_node(root);
+        }
+
+        let (top_node, pair_index_in_top_node) = self.stack.last_mut().unwrap();
+        let res = &top_node.pairs[*pair_index_in_top_node];
+        *pair_index_in_top_node += 1;
+        if let Some(next_child) = top_node.children.get(*pair_index_in_top_node) {
+            self.push_node(next_child)
+        } else if *pair_index_in_top_node >= top_node.pairs.len() {
+            self.pop_node();
+        }
+
+        self.remain_len -= 1;
+        Some(res)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.remain_len, Some(self.remain_len))
+    }
 }
 
 #[cfg(test)]
@@ -395,5 +456,42 @@ mod tests {
     }
 
     #[test]
-    fn iter() {}
+    fn iter() {
+        let test_nums = 100_000usize;
+        let mut nums: Vec<usize> = (0..test_nums).collect();
+        let mut rng = rand::thread_rng();
+        nums.shuffle(&mut rng);
+        let mut b_tree = BTree::new(256);
+        nums.iter().for_each(|&i| {
+            b_tree.add(i, i);
+        });
+
+        let mut num = 0usize;
+        b_tree.iter().for_each(|&(key, value)| {
+            assert_eq!(key, num);
+            assert_eq!(value, num);
+            num += 1;
+        });
+        assert_eq!(num, b_tree.len());
+    }
+
+    #[test]
+    fn iter_std_b_tree() {
+        let test_nums = 100_000usize;
+        let mut nums: Vec<usize> = (0..test_nums).collect();
+        let mut rng = rand::thread_rng();
+        nums.shuffle(&mut rng);
+        let mut b_tree = std::collections::btree_map::BTreeMap::default();
+        nums.iter().for_each(|&i| {
+            b_tree.insert(i, i);
+        });
+
+        let mut num = 0usize;
+        b_tree.iter().for_each(|(&key, &value)| {
+            assert_eq!(key, num);
+            assert_eq!(value, num);
+            num += 1;
+        });
+        assert_eq!(num, b_tree.len());
+    }
 }
